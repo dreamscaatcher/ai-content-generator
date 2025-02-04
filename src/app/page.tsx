@@ -29,7 +29,7 @@ export default function HomePage() {
       <section className="flex-1 flex flex-col items-center justify-center text-center px-4 py-16 lg:py-24">
         <div className="max-w-3xl space-y-8">
           <h1 className="text-4xl lg:text-6xl font-bold tracking-tighter">
-            Generate Amazing Content with AI
+            Generate Amazing Content with AI. This app is developed by Gurinder Ghuman.
           </h1>
           <p className="text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto">
             Create high-quality, engaging content in seconds using our advanced AI technology.
