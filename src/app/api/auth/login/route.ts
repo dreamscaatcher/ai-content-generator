@@ -2,9 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UserModel } from '@/models/user';
 import * as jwt from 'jsonwebtoken';
 
+// Get JWT secret and ensure it exists with proper typing
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is not defined in environment variables');
+}
+
+// Define the token payload type
+interface JWTPayload {
+  userId: string;
+  email: string;
+  role: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -22,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // Find user
     const user = await UserModel.findByEmail(email);
-    if (!user) {
+    if (!user || !user._id) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
@@ -38,14 +46,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate JWT token
+    // Prepare payload with proper typing
+    const payload: JWTPayload = {
+      userId: user._id.toString(), // Convert ObjectId to string
+      email: user.email,
+      role: user.role
+    };
+
+    // Generate JWT token with typed secret
     const token = jwt.sign(
-      { 
-        userId: user._id,
-        email: user.email,
-        role: user.role 
-      },
-      JWT_SECRET,
+      payload,
+      JWT_SECRET as jwt.Secret,
       { expiresIn: '24h' }
     );
 
