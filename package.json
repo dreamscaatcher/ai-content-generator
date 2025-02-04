@@ -10,6 +10,13 @@
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.7.4",
+    "@heroicons/react": "^2.2.0",
+    "@prisma/client": "^6.3.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.8",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.474.0",
     "mongodb": "^6.13.0",
     "mongoose": "^8.9.6",
     "next": "14.0.0",
