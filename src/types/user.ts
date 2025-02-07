@@ -12,6 +12,7 @@ export interface User {
   updatedAt: Date;
   apiLimit: number;
   apiResetDate: Date;
+  apiUsed: number; // Added this field for tracking API usage
 }
 
 export interface UserSession {
@@ -26,4 +27,9 @@ export interface CreateUserInput {
   name: string;
   email: string;
   password: string;
+}
+
+// Additional type for updating user properties
+export interface UpdateUserInput extends Partial<Omit<User, '_id'>> {
+  apiUsed?: number;
 }

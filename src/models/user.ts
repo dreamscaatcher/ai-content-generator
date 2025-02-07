@@ -1,7 +1,7 @@
 import { Db, Collection, ObjectId } from 'mongodb';
-import { User, CreateUserInput } from '@/types/user';
+import { User, CreateUserInput, UpdateUserInput } from '@/types/user';
 import { getDb } from '@/lib/mongodb';
-import bcrypt from 'bcryptjs'
+import bcrypt from 'bcryptjs';
 
 export class UserModel {
   private static collection: Collection<User>;
@@ -36,6 +36,7 @@ export class UserModel {
       updatedAt: new Date(),
       apiLimit: 10, // Default API limit
       apiResetDate: new Date(),
+      apiUsed: 0, // Initialize API usage counter
     };
 
     const result = await collection.insertOne(user as any);
@@ -52,7 +53,7 @@ export class UserModel {
     return collection.findOne({ _id });
   }
 
-  public static async updateUser(_id: ObjectId, update: Partial<User>): Promise<boolean> {
+  public static async updateUser(_id: ObjectId, update: UpdateUserInput): Promise<boolean> {
     const collection = await this.getCollection();
     const result = await collection.updateOne(
       { _id },
