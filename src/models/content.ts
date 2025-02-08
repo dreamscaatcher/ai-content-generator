@@ -49,15 +49,30 @@ export class ContentModel {
   public static async updateContent(_id: ObjectId, userId: ObjectId, update: UpdateContentInput): Promise<boolean> {
     const collection = await this.getCollection();
     
-    const updateData: Partial<Content> = {
-      ...update,
-      updatedAt: new Date(),
+    // Get current content to properly merge metadata
+    const currentContent = await this.getContent(_id, userId);
+    if (!currentContent) return false;
+
+    // Prepare update data with type safety
+    const updateData: { [key: string]: any } = {
+      updatedAt: new Date()
     };
 
-    // If content is updated, recalculate word count
-    if (update.content) {
+    // Only include defined fields in the update
+    if (update.title !== undefined) updateData.title = update.title;
+    if (update.content !== undefined) {
+      updateData.content = update.content;
       updateData.wordCount = update.content.trim().split(/\s+/).length;
-      updateData.version = (await this.getContent(_id, userId))?.version + 1 || 1;
+      updateData.version = currentContent.version + 1;
+    }
+    if (update.status !== undefined) updateData.status = update.status;
+    
+    // Handle metadata updates by merging with existing metadata
+    if (update.metadata) {
+      updateData.metadata = {
+        ...currentContent.metadata,
+        ...update.metadata
+      };
     }
 
     const result = await collection.updateOne(

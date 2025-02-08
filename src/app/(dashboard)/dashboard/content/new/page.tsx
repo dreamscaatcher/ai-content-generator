@@ -2,45 +2,56 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Select from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, AlertCircle } from 'lucide-react';
 
-const contentTypes = [
-  { value: 'blog', label: 'Blog Post' },
-  { value: 'article', label: 'Article' },
-  { value: 'social', label: 'Social Media Post' },
-  { value: 'email', label: 'Email' },
-  { value: 'description', label: 'Product Description' }
-];
-
-const toneOptions = [
-  { value: 'professional', label: 'Professional' },
-  { value: 'casual', label: 'Casual' },
-  { value: 'friendly', label: 'Friendly' },
-  { value: 'formal', label: 'Formal' },
-  { value: 'humorous', label: 'Humorous' }
-];
+type ContentType = 'blog' | 'article' | 'social' | 'email' | 'description';
+type ToneType = 'professional' | 'casual' | 'friendly' | 'formal' | 'humorous';
 
 interface FormData {
-  contentType: string;
+  contentType: ContentType;
   topic: string;
   keywords: string;
-  tone: string;
+  tone: ToneType;
   additionalInstructions: string;
 }
 
+const contentTypes = [
+  { id: 'blog' as ContentType, name: 'Blog Post' },
+  { id: 'article' as ContentType, name: 'Article' },
+  { id: 'social' as ContentType, name: 'Social Media Post' },
+  { id: 'email' as ContentType, name: 'Email' },
+  { id: 'description' as ContentType, name: 'Product Description' }
+];
+
+const toneOptions = [
+  { id: 'professional' as ToneType, name: 'Professional' },
+  { id: 'casual' as ToneType, name: 'Casual' },
+  { id: 'friendly' as ToneType, name: 'Friendly' },
+  { id: 'formal' as ToneType, name: 'Formal' },
+  { id: 'humorous' as ToneType, name: 'Humorous' }
+];
+
 export default function NewContentPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
-    contentType: '',
+    contentType: 'blog',
     topic: '',
     keywords: '',
-    tone: '',
+    tone: 'professional',
     additionalInstructions: ''
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -48,7 +59,7 @@ export default function NewContentPage() {
     }));
   };
 
-  const handleSelectChange = (name: string, value: string) => {
+  const handleSelectChange = (name: keyof FormData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -57,7 +68,7 @@ export default function NewContentPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsGenerating(true);
     setError(null);
 
     try {
@@ -69,116 +80,158 @@ export default function NewContentPage() {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
+        const data = await response.json();
         throw new Error(data.error || 'Failed to generate content');
       }
 
-      // Handle successful content generation
-      router.push('/dashboard/content');
+      const data = await response.json();
+      
+      // Create new content with the generated text
+      const contentResponse = await fetch('/api/content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData.topic,
+          type: formData.contentType,
+          content: data.content,
+          metadata: {
+            topic: formData.topic,
+            keywords: formData.keywords.split(',').map(k => k.trim()),
+            tone: formData.tone,
+            additionalInstructions: formData.additionalInstructions
+          }
+        }),
+      });
+
+      if (!contentResponse.ok) {
+        throw new Error('Failed to save generated content');
+      }
+
+      const contentData = await contentResponse.json();
+      router.push(`/dashboard/content/${contentData._id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Generate New Content</h1>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Generate New Content</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
-        {error && (
-          <div className="bg-red-50 text-red-500 p-4 rounded-md">
-            {error}
-          </div>
-        )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Content Type</label>
+              <Select
+                name="contentType"
+                value={formData.contentType}
+                onValueChange={(value: string) => handleSelectChange('contentType', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select content type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {contentTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Content Type
-          </label>
-          <Select
-            name="contentType"
-            value={formData.contentType}
-            onChange={(value) => handleSelectChange('contentType', value)}
-            options={contentTypes}
-            placeholder="Select content type"
-          />
-        </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Topic</label>
+              <Textarea
+                name="topic"
+                value={formData.topic}
+                onChange={handleChange}
+                placeholder="Enter the main topic or subject"
+                className="min-h-[100px]"
+                required
+              />
+            </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Topic
-          </label>
-          <textarea
-            name="topic"
-            value={formData.topic}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border rounded-md"
-            rows={4}
-            placeholder="Enter your topic"
-          />
-        </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Keywords</label>
+              <Input
+                name="keywords"
+                value={formData.keywords}
+                onChange={handleChange}
+                placeholder="Enter keywords (comma-separated)"
+              />
+            </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Keywords
-          </label>
-          <textarea
-            name="keywords"
-            value={formData.keywords}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border rounded-md"
-            placeholder="Enter keywords (comma-separated)"
-          />
-        </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tone</label>
+              <Select
+                name="tone"
+                value={formData.tone}
+                onValueChange={(value: string) => handleSelectChange('tone', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select tone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {toneOptions.map((tone) => (
+                    <SelectItem key={tone.id} value={tone.id}>
+                      {tone.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Tone
-          </label>
-          <Select
-            name="tone"
-            value={formData.tone}
-            onChange={(value) => handleSelectChange('tone', value)}
-            options={toneOptions}
-            placeholder="Select tone"
-          />
-        </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Additional Instructions</label>
+              <Textarea
+                name="additionalInstructions"
+                value={formData.additionalInstructions}
+                onChange={handleChange}
+                placeholder="Any specific requirements or instructions"
+                className="min-h-[100px]"
+              />
+            </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Additional Instructions
-          </label>
-          <textarea
-            name="additionalInstructions"
-            value={formData.additionalInstructions}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border rounded-md"
-            rows={4}
-            placeholder="Any specific requirements or instructions"
-          />
-        </div>
-
-        <div className="flex justify-end space-x-4">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-4 py-2 border rounded-md hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isLoading ? 'Generating...' : 'Generate Content'}
-          </button>
-        </div>
-      </form>
+            <div className="flex justify-end space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Content'
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
